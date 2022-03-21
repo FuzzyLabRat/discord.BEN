@@ -1,26 +1,73 @@
 import { ICommand } from 'wokcommands';
-import { MessageAttachment, MessageEmbed } from 'discord.js'
-import { bold, italic, underscore, codeBlock, blockQuote, channelMention } from '@discordjs/builders';
+import { MessageActionRow, MessageAttachment, MessageButton, MessageEmbed, MessageComponentInteraction } from 'discord.js'
+import { bold, underscore, italic, codeBlock, quote, } from '@discordjs/builders';
+import { Modal, TextInputComponent, showModal } from 'discord-modals';
+import Tablefier from '@functions/Tablefier';
 
-// const controls = {
-// 	next = '▶️',
-// 	prev = '◀️',
-// 	newBounty = '🆕',
-// 	help = '❔',
-// }; // TOOD: convert consts to a map/hashtable
-const next = '▶️'
-const prev = '◀️'
-const newBounty = '🆕'
-const help = '❔'
+const controls = {
+ 	next : '▶️',
+ 	prev : '◀️',
+ 	new  : '🆕',
+	help : '❔',
+	refresh : '♻️',
+}
 
-const SAMPLE = `
-   ID   │      Target       │ Reward 
-────────┼───────────────────┼──────────
- [0123] │ Donald Duck       │ 1M Gala
- [4567] │ Minnie Mouse      │ 1M Gala 
- [890A] │ Minnie Mouse      │ 1M Gala
- [BCDE] │ Donald Duck       │ 5M Gala
- [FGHI] │ [Atls]Calus Daiga │ 10M Gala`
+const sample = [
+	['ID','Target','Reward'],
+	['\'01230\'', 'Donald Duck', '$1M'],
+	['\'4a567\'', 'Minnie Mouse', '$1M'],
+	['\'3BCDE\'', 'Donald Duck', '$5M'],
+	['\'7FGHI\'', '[Atls] Calus Daiga', '$10M'],
+	["\'1a904\'", 'Dellachenko GA', '$100M'],
+	["\'19d05\'", 'Salama Maimonides', '$100M'],
+	["","",""]
+]
+
+const embeds: MessageEmbed[] = []
+const pages = {} as { [key: string]: number} 
+
+const getButtonRow = (id: number, recordsLen: number) => {
+	// Control Icons: ◀️ ▶️ 🆕 ❔ ♻️
+	const row = new MessageActionRow()
+	row.addComponents(
+		new MessageButton()
+			.setCustomId('pBounty')
+			.setEmoji('◀️')
+			.setLabel('Prev')
+			.setStyle('SECONDARY')
+			.setDisabled( id === 0 )
+	)
+	row.addComponents(
+		new MessageButton()
+			.setCustomId('nBounty')
+			.setEmoji('▶️')
+			.setLabel('Next')
+			.setStyle('SECONDARY')
+			.setDisabled( pages[id] === embeds.length -1 )
+	)
+	row.addComponents(
+		new MessageButton()
+			.setCustomId('newBounty')
+			.setEmoji('🆕')
+			.setLabel('New Bounty')
+			.setStyle('SECONDARY')
+	)
+	row.addComponents(
+		new MessageButton()
+			.setCustomId('bountyHelp')
+			.setEmoji('❔')
+			.setLabel('Help')
+			.setStyle('SECONDARY')
+	)
+	row.addComponents(
+		new MessageButton()
+			.setCustomId('bountyRefresh')
+			.setEmoji('♻️')
+			.setStyle('SECONDARY')
+			.setDisabled(true)
+	)
+	return row
+}
 
 export default {
 	category: 'Reward System',
@@ -28,60 +75,111 @@ export default {
 	slash: 'both',
 	testOnly: true,
 
-	callback: async ({ client, channel }) => {
+	callback: async ({ client, channel, interaction }) => {
+
+
 		const attatch = new MessageAttachment('/home/fuzzylabrat/discord-dev/bots/discord.BEN/assets/images/1255972.png')
-		const gala = client.emojis.cache.get('949888554673250364')
+
+		const start = 1;
+		const end   = 5;
+		const len   = sample.length-1;
 
 		const embed = new MessageEmbed()
 			.setTitle('- '+bold(underscore('Station Bounty Board'))+' -')
 			.setColor('#d76628')
-			//.setDescription()
+			.setDescription(`${
+				codeBlock('bash', Tablefier(sample)) +
+				quote(italic('displaying ['+start+'-'+end+'] of ['+len+'] bounties'))
+			}`)
 			.addFields(
-				{ 
-					name: 'Active Bounties ',
-					value: codeBlock('ini', SAMPLE),
-				},
 				{
-					name: '\u200B', 
-					value: underscore('Board Controls') + '\n'+ blockQuote(
-						`${prev} : Previous Bounty Set` + `\n` +
-						`${newBounty} : Create a new Bounty` 
-					), 
+					name: '\u200B',
+					value: '<#953018251720405012>',
 					inline: true
 				},
 				{
-					name: '\u200B', 
-					value: italic('- react below -') + '\n' + blockQuote(
-						`${next} : Next Bounty Set` + '\n' +
-						`${help} : Bounty Board Help` + '\n'
-					), 
+					name: '\u200B',
+					value: '<#953018061584216104>',
 					inline: true
-				},// Spacer Row
-				// { 
-				// 	name:  '\u200B', 
-				// 	value: `Get more information on a bounty using the slash command \n ${codeBlock('md', '/bounty info <bounty_id>')}\n Redeem at ${channelMention('950877934472798228')}`,
-				// },
-				// {
-				// 	name: 'Active Bounties (0/0)', 
-				// 	value: italic(
-				// 		'- no active bounties posted -' + '\n'
-				// 	), 
-				// },
-				//{ name:  '\u200B', value: '\u200B', }, // Spacer Row
+				},
 			)
 			.setThumbnail('attachment://1255972.png')
 			.setFooter({text: 'last refreshed'})
 			.setTimestamp()
 		
-		//return { custom: true, embeds: [embed], files: [attatch] }
+		//const board = await interaction.reply({ 
+		const board = await channel.send({ 
+		//const board = await interaction.followUp({ 
+			embeds: [embed], 
+			components: [getButtonRow(0,sample.length-1)],
+			files: [attatch] 
+		})
 
-		const board = await channel.send({ embeds: [embed], files: [attatch] })
+		const filter = (btInt: MessageComponentInteraction) => { }
+		const collector = channel.createMessageComponentCollector({ })
+
+		collector.on('collect', async i => {
+
+			switch (i.customId) {
+				case 'bountyHelp': {
+					i.reply({content: 'Hello Help Menu', ephemeral: true})
+					break;
+				}
+				case 'newBounty': {
+					const target =  new TextInputComponent()
+						.setCustomId('bountyTarget')
+						.setLabel('Bounty Target')
+						.setStyle('SHORT')
+						.setPlaceholder('Target Name')
+						.setRequired(true)
 		
-		// TODO: convert to a for loop or hash iterator
-		await board.react(prev) 
-		await board.react(next)
-		await board.react(newBounty)
-		await board.react(help)
+					const reward = new TextInputComponent()
+						.setCustomId('bountyReward')
+						.setLabel('Reward Offered')
+						.setStyle('SHORT')
+						.setPlaceholder('What will be paid upon bounty fulfillment')
+						.setRequired(true)
+					const reason = new TextInputComponent()
+						.setCustomId('bountyReason')
+						.setLabel('Bounty Reason')
+						.setStyle('LONG')
+						.setPlaceholder('<OPTIONAL Reason why this bounty is posted')
+						.setRequired(false)
+
+					const modal = new Modal()
+						.setCustomId('newBounty')
+						.setTitle('New Station Bounty')
+						.addComponents(target)
+						.addComponents(reward)
+						.addComponents(reason)
+
+					showModal(modal, {client: client,interaction: i})
+					break;
+				}
+				case 'pBounty': {
+					console.log('Load Previous Bounty')
+					i.deferReply();
+					break;
+				}
+				case 'nBounty': {
+					console.log('Load Next Bounty')
+					i.deferReply();
+					break;
+				}
+			}
+		})
+
+		// const filter = (reaction: MessageReaction, user: User ) => {
+		// 	return !user.bot
+		// }
+		// const collector = board.createReactionCollector({filter})
+		// collector.on('collect', (reaction, user) => {
+		// 	reaction.users.remove(user.id);
+		// 	console.log(interaction)
+		// 	if (reaction.emoji.name === newBounty) {
+		// 		reaction.message.reply({content: 'OK, creating a Bounty', emphemeral: true})
+		// 	}
+		// })
 
 		//channel.send(blockQuote(channelMention('950877934472798228')))
 
@@ -91,14 +189,3 @@ export default {
 		// 	.then(() => { board.react(help) })
 	}
 } as ICommand
-
-/*
-`┌────────┬──────────────┬────────┐
-│   ID   │    Target    │ Reward │
-├────────┼──────────────┼────────┤
-│ [0123] │ Donald Duck  │ 1MG    │
-│ [0123] │ Minnie Mouse │ 1MG    │
-│ [0123] │ Minnie Mouse │ 1MG    │
-│ [0123] │ Donald Duck  │        │
-└────────┴──────────────┴────────┘`
-*/

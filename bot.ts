@@ -10,6 +10,8 @@ import DiscordJS, { Intents } from 'discord.js'
 import WOKCommands from 'wokcommands'
 import path from 'path'
 import bounty from './models/bounty'
+import discordModals from 'discord-modals' // Define the discord-modals package!
+
 
 console.log(`Initializing BOT [ BEN.dev ]...`)
 
@@ -18,8 +20,13 @@ const client = new DiscordJS.Client({
 		Intents.FLAGS.GUILDS,
 		Intents.FLAGS.GUILD_MESSAGES,
 		Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
+	],
+	partials: [
+		'MESSAGE','CHANNEL','REACTION'
 	]
 })
+
+discordModals(client); // discord-modals needs your client in order to interact with modals
 
 client.on('ready', async () => {
 	new WOKCommands(client, {
@@ -28,7 +35,8 @@ client.on('ready', async () => {
 		typeScript: true,
 		testServers: process.env.testServers?.split(','),
 		ephemeral: true,
-		mongoUri: process.env.MONGO_URI
+		mongoUri: process.env.MONGO_URI,
+		debug: true
 	})
 	.setDisplayName('[BEN]')
 	.setDefaultPrefix(process.env.PREFIX)
